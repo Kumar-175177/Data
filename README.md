@@ -227,7 +227,258 @@ To handle skewed data (where some keys have significantly more records), I use t
 - **Increase parallelism**: Use `repartition()` to increase the number of tasks.
 
 ---
+**1. What is the difference between groupByKey and reduceByKey in PySpark?**
+- `groupByKey` groups all values with the same key into a single sequence, which can lead to large data shuffling and potential memory issues.
+- `reduceByKey` performs a local aggregation before the shuffle, reducing the amount of data transferred across the cluster. It is more efficient and preferred for large datasets.
 
+**2. How to register a User Defined Function (UDF) in PySpark?**
+```python
+from pyspark.sql.functions import udf
+from pyspark.sql.types import IntegerType
+
+def square(x):
+    return x * x
+
+square_udf = udf(square, IntegerType())
+df.withColumn("squared", square_udf(df["number"]))
+```
+
+**3. What are Delta logs, and how to track data versioning in Delta tables?**
+- Delta Lake maintains `_delta_log` directory to store transaction logs in JSON format. These logs track changes and allow versioning.
+- You can use `DESCRIBE HISTORY delta_table_path` to view the version history.
+
+**4. How do you monitor and troubleshoot ADF pipeline failures?**
+- Use Azure Monitor or ADF Monitor tab to check pipeline run status, errors, and activity details.
+- Enable diagnostic logs to send data to Log Analytics.
+- Review error messages and failed activity inputs/outputs to pinpoint issues.
+
+**5. What is the use of Delta Lake, and how does it support ACID transactions?**
+- Delta Lake enables ACID transactions using the transaction log (_delta_log) that serializes operations like inserts, updates, and deletes.
+- It ensures atomicity, consistency, isolation, and durability, making data lakes more reliable.
+
+**6. Explain the concept of Managed Identity in Azure and its use in data engineering.**
+- Managed Identity allows Azure services (like ADF, Databricks) to authenticate to other Azure resources (like Key Vault, Storage) without credentials.
+- Helps implement secure, password-less authentication.
+
+**7. Write a SQL query to find employees earning more than their manager.**
+```sql
+SELECT e.name
+FROM employees e
+JOIN employees m ON e.manager_id = m.id
+WHERE e.salary > m.salary;
+```
+
+**8. Describe the process of migrating on-premises databases to Azure SQL Database.**
+- Assess using Data Migration Assistant (DMA).
+- Use Azure Database Migration Service (DMS) for schema and data transfer.
+- Perform testing and validation before cutover.
+
+**9. Write PySpark code to filter records based on a condition.**
+```python
+df.filter(df.age > 30).show()
+```
+
+**10. How do you implement error handling in ADF pipelines?**
+- Use `If Condition`, `Until`, and `Switch` activities.
+- Configure retry policies, and use `On Failure` paths in activities.
+- Log failures using Web, Azure Function, or stored procedures.
+
+**11. Explain the role of SparkSession in PySpark.**
+- `SparkSession` is the entry point to work with DataFrames and SQL in PySpark.
+- It encapsulates SparkContext and provides methods to create DataFrames, run SQL queries, and configure the Spark application.
+
+**12. How do you optimize storage costs in ADLS?**
+- Enable lifecycle management to move cold data to archive tiers.
+- Compress data formats (Parquet, Avro).
+- Partition data properly and avoid small files.
+
+**13. Write a SQL query to find duplicate records in a table.**
+```sql
+SELECT name, COUNT(*)
+FROM employees
+GROUP BY name
+HAVING COUNT(*) > 1;
+```
+
+**14. What is the purpose of caching in PySpark, and how is it implemented?**
+- Caching stores intermediate results in memory to avoid recomputation.
+- Use `df.cache()` or `df.persist()`.
+- Helps improve performance when reusing DataFrames multiple times.
+
+**15. Describe the process of integrating ADF with Databricks for ETL workflows.**
+- Create a Linked Service for Databricks.
+- Use "Notebook" activity in ADF pipeline to trigger Databricks notebooks.
+- Pass parameters between ADF and notebook for dynamic execution.
+
+**16. Write Python code to count the frequency of words in a string.**
+```python
+from collections import Counter
+text = "hello world hello"
+word_freq = Counter(text.split())
+print(word_freq)
+```
+
+**17. How do you handle schema evolution in Delta Lake?**
+- Use `mergeSchema` option when writing data:
+```python
+df.write.option("mergeSchema", "true").format("delta").mode("append").save(path)
+```
+- Delta Lake automatically merges schema changes.
+
+**18. Explain the difference between streaming and batch processing in Spark.**
+- **Batch:** Processes a finite volume of data at once. Eg: daily reports.
+- **Streaming:** Processes data in real-time/micro-batches as it arrives. Eg: IoT data streams.
+
+**19. How do you secure data pipelines in Azure?**
+- Use Managed Identity and Key Vault for secrets.
+- Enable RBAC and network-level restrictions (Private Endpoints).
+- Encrypt data at rest and in transit.
+
+**20. What are the best practices for managing large datasets in Databricks?**
+- Use Delta Lake with Z-ordering and compaction.
+- Avoid small files, repartition data.
+- Leverage caching and broadcast joins.
+- Monitor performance via Spark UI and Ganglia.
+
+**Data Engineering and ADF - Q&A (Set 4)**
+
+1. **What is deep clone and shallow clone?**
+   - **Deep Clone:** Creates a full copy of the Delta table including the metadata and data at the time of clone. It is independent of the source.
+   - **Shallow Clone:** Copies only metadata and references to data files. The actual data is not copied.
+
+2. **What happens in shallow clone if table metadata is changed where you have cloned the table?**
+   - Shallow clone maintains a snapshot of the table at the time of cloning. Any metadata changes in the source after cloning do not reflect in the cloned table.
+
+3. **What is Vacuum command in Databricks?**
+   - `VACUUM` removes files no longer referenced by Delta tables to free up storage. It is used for housekeeping.
+
+4. **I have 100 rows, what happens if I run Vacuum?**
+   - If no time threshold is crossed (default 7 days), `VACUUM` won’t delete any data. It removes stale data files that are no longer referenced.
+
+5. **Various activities used in ADF:**
+   - Copy activity, Lookup, Web, ForEach, If Condition, Execute Pipeline, Wait, Set Variable, Get Metadata, Stored Procedure, Script activity, Data Flow.
+
+6. **Metadata driven architecture:**
+   - Architecture that uses configuration metadata (e.g., tables, columns, transformations) stored in control tables to drive the ETL logic dynamically.
+
+7. **What is Lookup activity?**
+   - It fetches a single or multiple rows from a data source. Often used to retrieve config data.
+
+8. **Types of linked services used in my project:**
+   - Azure SQL Database, Azure Blob Storage, ADLS Gen2, Databricks, REST API.
+
+9. **What are the triggers available?**
+   - Schedule, Tumbling Window, Event-based, Manual.
+
+10. **Use case for event-based trigger:**
+   - When a file arrives in ADLS, trigger a pipeline to process it.
+
+11. **What is tumbling trigger and difference between schedule and tumbling trigger?**
+   - Tumbling Trigger ensures non-overlapping fixed-size intervals, with dependency tracking. Schedule trigger just runs based on time, without dependency or interval guarantees.
+
+12. **SQL query to remove duplicates:**
+   ```sql
+   DELETE FROM employees 
+   WHERE id NOT IN (
+     SELECT MIN(id) 
+     FROM employees 
+     GROUP BY name, salary
+   );
+   ```
+
+13. **How switch case works in ADF?**
+   - Evaluates an expression and routes execution to the matching case path, similar to if-else ladder.
+
+14. **What is Web activity?**
+   - Makes HTTP calls to external APIs from ADF.
+
+15. **What is the output of Web activity?**
+   - JSON response. You can use `@activity('Web1').output` to access and parse it.
+
+16. **How many activities are supported within a pipeline?**
+   - Up to 40 activities per pipeline.
+
+17. **Question on Execute Pipeline activity in ADF:**
+   - Used to call/trigger another pipeline (child) from a parent pipeline.
+
+18. **How to pass parameters between parent and child pipeline:**
+   - Define parameters in child pipeline. Pass values from parent using the settings in Execute Pipeline activity.
+
+19. **Transformations used in ADF and Databricks:**
+   - ADF: Derived Column, Filter, Conditional Split, Aggregate, Join.
+   - Databricks: withColumn, selectExpr, filter, groupBy, join.
+
+20. **If SQL query is running for long, how do you identify the issue?**
+   - Check execution plan, look for missing indexes, table scans, large joins, and analyze statistics.
+
+21. **What is Index?**
+   - A database object that improves query speed by allowing faster lookups on columns.
+
+22. **Difference between partitioning and index:**
+   - Partitioning splits data into segments to reduce scanned data.
+   - Index allows faster lookups but doesn’t reduce data scan size.
+
+23. **How index works?**
+   - Uses B-tree or hash structures to enable quick data retrieval without scanning full table.
+
+24. **What is Hive metastore and backend mechanism?**
+   - It stores metadata of tables/databases. Metadata is stored in RDBMS (e.g., MySQL). Data remains in HDFS or cloud storage.
+
+25. **Difference between managed and external table:**
+   - Managed: Spark/Hive manages both data and metadata.
+   - External: Only metadata is managed; data remains in user-provided path.
+
+26. **Syntax to specify managed/external table in PySpark/SQL:**
+   ```sql
+   -- Managed
+   CREATE TABLE table_name (id INT, name STRING);
+
+   -- External
+   CREATE TABLE table_name (id INT, name STRING)
+   USING DELTA LOCATION '/mnt/path/to/data';
+   ```
+
+27. **What will be created along with Parquet in Delta tables?**
+   - `_delta_log` folder containing transaction logs.
+
+28. **Types of files in _delta_log:**
+   - JSON (transaction actions), CRC (checksums).
+
+29. **Question on repartition and coalesce:**
+   - `repartition(n)`: Increases/reshuffles partitions (full shuffle).
+   - `coalesce(n)`: Reduces partitions (less shuffle).
+
+30. **Update null values in SQL:**
+   ```sql
+   SELECT COALESCE(column_name, 'default_value') FROM table;
+   ```
+
+31. **What is constraint and types:**
+   - Rules to restrict data in a table.
+   - Types: Primary Key, Foreign Key, Unique, Check, Not Null, Default.
+
+32. **What is unique constraint and check constraint:**
+   - **Unique:** Ensures column values are distinct.
+   - **Check:** Validates column values based on a condition.
+
+33. **Have I used constraints in project?**
+   - Yes, used **Primary Key** and **Check Constraint** in Azure SQL to ensure data integrity.
+
+34. **Explain Medallion Architecture:**
+   - Bronze (raw data), Silver (cleaned data), Gold (aggregated data) layers for organizing Lakehouse data.
+
+35. **Question on Node and Partitions:**
+   - Node: A physical/virtual machine in the cluster.
+   - Partition: Logical division of data across nodes for parallelism.
+
+36. **SCD Type 1 and Type 2:**
+   - **SCD Type 1:** Overwrites old data.
+   - **SCD Type 2:** Maintains history using new rows with start and end date columns.
+
+37. **Ways to implement SCD Type 2:**
+   - Merge in SQL or Delta Lake using surrogate keys and date fields.
+   - Data Flows in ADF using Alter Row and Conditional Split.
+   - PySpark Merge with `whenMatchedUpdate`, `whenNotMatchedInsert`.
 
 
 ---
