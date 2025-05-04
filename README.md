@@ -480,6 +480,110 @@ df.write.option("mergeSchema", "true").format("delta").mode("append").save(path)
    - Data Flows in ADF using Alter Row and Conditional Split.
    - PySpark Merge with `whenMatchedUpdate`, `whenNotMatchedInsert`.
 
+Behavoural questions :
+Here are answers to all the technical, scenario-based, and behavioral interview questions based on your two Azure Data Engineering projects:
+
+---
+
+## ✅ Technical Questions & Detailed Answers
+
+### 1. **Walk me through the architecture of your pipeline.**
+
+**Answer:**
+In the scalable log processing project, I built a hybrid architecture combining real-time and batch processing.
+
+* **Real-time**: Kafka ingested JSON logs from website events. Spark Structured Streaming parsed and validated logs with a strict schema, then enriched data (adding geolocation, user agent info). Output was stored in Azure Data Lake Storage (ADLS) as partitioned Parquet files (e.g., partitioned by date, region).
+* **Batch**: Azure Data Factory picked up the same files, re-applied transformations for consistency, then performed aggregations like average TTI and TTAR per page URL. Output was stored in Azure Synapse Analytics.
+* **Orchestration**: Azure Functions responded to ADLS events, determined dynamic paths, retrieved last checkpoints from Cosmos DB, and triggered the ADF pipeline.
+
+Cluster: Spark autoscaling with 8-16 nodes (8 vCPU, 64 GB RAM each).
+Data Size: \~3 TB per day, \~90 TB/month.
+
+---
+
+### 2. **Why did you use both real-time and batch processing?**
+
+**Answer:**
+Real-time streaming (Kafka + Spark Structured Streaming) provided near-instant insights like click behavior and UI responsiveness. But for heavy joins and aggregations, we used batch processing (ADF) to optimize cost and accuracy. This also helped reconcile with historical data and regenerate if needed.
+
+---
+
+### 3. **How did you handle schema drift in JSON logs?**
+
+**Answer:**
+We defined a strict schema using Spark `StructType` and rejected records that didn't match. Bad records were sent to a quarantine path in ADLS. This allowed uninterrupted processing and easier debugging. We monitored drift patterns to update schema definitions quarterly.
+
+---
+
+### 4. **Why use Parquet format in ADLS?**
+
+**Answer:**
+Parquet is columnar and supports compression, making it ideal for analytical queries. For instance, when calculating TTAR, we read only specific columns, speeding up processing. We also leveraged `snappy` compression and partitioned by `event_date` and `region` for better query pushdown.
+
+---
+
+### 5. **How did Cosmos DB help with checkpointing?**
+
+**Answer:**
+Cosmos DB stored metadata like the last file processed or timestamp for each input path. Azure Functions used this to determine incremental files. This helped us resume gracefully during failures and avoided duplicate processing.
+
+---
+
+## ✅ Scenario-Based Questions & Answers
+
+### 6. **Your Spark job is slow. How do you debug?**
+
+**Answer:**
+I check Spark UI for skewed stages or long tasks. In one case, page URL caused skew because 90% logs were from one popular page. I applied salting to the key during aggregation and later de-salted. I also tuned `spark.sql.shuffle.partitions` and used broadcast joins when feasible.
+
+---
+
+### 7. **Kafka sends duplicate logs. How do you avoid duplicates?**
+
+**Answer:**
+We added a deduplication step in Spark using `dropDuplicates()` based on composite key (`event_id`, `timestamp`, `user_id`). In batch, we used Delta Lake's `MERGE` to avoid insert-only logic and ensured idempotency.
+
+---
+
+### 8. **Azure Function fails. What’s your recovery plan?**
+
+**Answer:**
+We implemented a backup timer-based Azure Function to scan ADLS for missed files. It cross-referenced Cosmos DB's checkpoint and triggered ADF for any gaps. Logs were pushed to Log Analytics, and alerts sent to DevOps via Teams.
+
+---
+
+## ✅ Behavioral Questions & STAR-Format Answers
+
+### 9. **Describe a time you worked with other teams.**
+
+**Answer:**
+**Situation:** At Sony, product managers wanted TTI and TTAR metrics per campaign.
+**Task:** I had to ensure the data pipeline provided accurate, timely metrics.
+**Action:** Collaborated with web developers for event design, and analysts for KPI definitions. Incorporated logic into both streaming and batch flows.
+**Result:** Improved dashboard accuracy by 90% and helped reduce bounce rate by 12% through actionable insights.
+
+---
+
+### 10. **Biggest challenge or bug you solved?**
+
+**Answer:**
+**Situation:** Spark job failed randomly during nightly runs.
+**Task:** Identify root cause of instability.
+**Action:** Analyzed logs and noticed large JSON payloads caused memory issues. Refactored schema parsing to be lazy-loaded and added adaptive query execution.
+**Result:** Pipeline stability improved, and job runtime reduced by 30%.
+
+---
+
+### 11. **What was the business impact of your solution?**
+
+**Answer:**
+Our log analytics pipeline helped identify that pages with high TTAR had lower conversions. The website team optimized loading, which improved page load times by 35% and raised sales conversion by 8% in key regions.
+
+---
+
+Let me know if you'd like this in a formatted PDF or presentation slide deck for interviews.
+
+
 
 ---
 
